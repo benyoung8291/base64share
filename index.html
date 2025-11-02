@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share File</title>
+  <script>
+    async function shareFile() {
+      // Get base64 from URL param (or fetch from your API using fileId)
+      const params = new URLSearchParams(location.search);
+      let base64 = params.get('base64');  // Or fetch: await fetch(`/api/file? id=${params.get('id')}`).then(r => r.text())
+      let fileName = params.get('name') || 'document.pdf';
+      let mime = params.get('mime') || 'application/pdf';
+
+      if (!base64) {
+        document.body.innerHTML = '<p>Error: No file data</p>';
+        return;
+      }
+
+      // Clean base64
+      base64 = base64.replace(/^data:.*;base64,/, '');
+
+      // Base64 to Blob/File
+      const byteChars = atob(base64);
+      const byteArrays = [];
+      for (let i = 0; i < byteChars.length; i++) {
+        byteArrays.push(byteChars.charCodeAt(i));
+      }
+      const blob = new Blob([new Uint8Array(byteArrays)], { type: mime });
+      const file = new File([blob], fileName, { type: mime });
+
+      // Check support & share
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: fileName,
+            text: 'Shared from my app'
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') alert('Share failed: ' + err);
+        }
+      } else {
+        // Fallback: Download link
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        alert('Share not supported — downloading instead');
+      }
+    }
+
+    // Auto-share on load (or add <button onclick="shareFile()">Share</button>)
+    window.onload = shareFile;
+  </script>
+</head>
+<body>
+  <p>Loading file for share...</p>
+</body>
+</html>
